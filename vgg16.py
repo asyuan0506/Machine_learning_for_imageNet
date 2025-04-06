@@ -56,7 +56,15 @@ def main():
     # 建立模型
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = models.vgg16(weights=None)
-    model.classifier[6] = nn.Linear(4096, num_classes)  # 替換分類層
+    model.classifier = nn.Sequential(
+    nn.Linear(25088, 4096),
+    nn.ReLU(True),
+    nn.Dropout(p=0.65), # p 為隨機丟棄的機率
+    nn.Linear(4096, 4096),
+    nn.ReLU(True),
+    nn.Dropout(p=0.65),
+    nn.Linear(4096, num_classes)
+    )
     model = model.to(device)
 
     # 訓練參數
@@ -102,7 +110,7 @@ def main():
         val_correct = 0
         val_total = 0
         with torch.no_grad():
-            for images, labels in val_loader:
+            for images, labels in tqdm(val_loader, desc=f"Epoch {epoch+1}/{num_epochs} - Validating"):
                 images, labels = images.to(device), labels.to(device)
                 outputs = model(images)
                 loss = criterion(outputs, labels)
@@ -133,7 +141,7 @@ def main():
                 break
 
     # 繪製訓練結果圖
-    epochs = list(range(1, num_epochs+1))
+    epochs = list(range(1, epoch+1))
     plt.subplot(1, 2, 1)
     plt.plot(epochs, train_losses, label='訓練 Loss')
     plt.plot(epochs, val_losses, label='驗證 Loss')
